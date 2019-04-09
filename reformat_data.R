@@ -43,7 +43,8 @@ all_observed <- bind_rows(ili_init_pub_list) %>%
   mutate(season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9))) %>%
   filter(season %in% c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")) %>%
   select(season, location, week, year, release_date, epiweek, issue, lag, ILI) %>%
-  mutate(order_week = week_inorder(week, season))
+  mutate(order_week = week_inorder(week, season),
+         issue_week = as.numeric(substr(issue, 5, 6)))
 
 # Save RDS output for use in Shiny
 saveRDS(all_observed, file = "Data/observed_ili.Rds")

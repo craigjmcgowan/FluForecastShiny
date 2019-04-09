@@ -1,8 +1,10 @@
 library(shiny)
+library(shinyWidgets)
 library(dplyr)
 library(ggplot2)
+library(stringr)
 
-# Define UI plotting application
+##### UI #####
 ui <- fluidPage(
    
    # Application title
@@ -39,15 +41,20 @@ ui <- fluidPage(
       mainPanel(
         plotOutput("time_plot"),
         
-        sliderInput("week", label = "Calendar Week", min = 40, max = 73,
-                    value = 56, step = 1, round = TRUE)
+        sliderTextInput(inputId = "week", label = "Calendar Week", 
+                        choices = c(as.character(40:52), as.character(1:18)),
+                        selected = as.character(this_week), grid = TRUE,
+                        hide_min_max = TRUE)
         
       )
    )
 )
 
-# Define server logic required to plot flu trends
+
+##### SERVER #####
 server <- function(input, output, session) {
+  
+  ### Update user inputs -----
   
   # Update the location dropdown box based on user input for resolution
   observe({
@@ -66,12 +73,30 @@ server <- function(input, output, session) {
                       selected = head(choices, 1)
     )
   })
+    
+  # Update week slider if a season with 53 weeks is selected
+  observeEvent(input$run, {
+    
+    # Update slider based on season for 52/53 weeks
+    if (input$season == "2014-2015") {
+      week_choices <- c(as.character(40:53), as.character(1:18))
+    } else {
+      week_choices <- c(as.character(40:52), as.character(1:18))
+    }
+    
+    # Can also set the label and select items
+    updateSliderTextInput(session, inputId = "week",
+                          label = "Calendar Week",
+                          choices = week_choices,
+                          selected = as.character(this_week)
+    )
+    
+  })
   
   # Create datasets of forecasted values and truth -----
   # Update location and season only on clicks
   truth_1 <- eventReactive(input$run, {
-    filter(all_observed, season == input$season, location == input$loc,
-           lag == 0) 
+    filter(all_observed, season == input$season, location == input$loc)
   },
   ignoreNULL = FALSE)
   
@@ -81,31 +106,59 @@ server <- function(input, output, session) {
   },
   ignoreNULL = FALSE)
   
-  # Update week automatically as slider is moved
-  point_observed <- reactive({
-    filter(truth_1(), order_week <= input$week) %>%
+  wk_label <- eventReactive(input$run, {
+    if (input$season == "2014-2015") {
+      c(as.character(seq(40, 52, 2)), as.character(seq(1, 21, 2)))
+    } else {
+      c(as.character(seq(40, 52, 2)), as.character(seq(2, 22, 2)))
+    }
+  },
+  ignoreNULL = FALSE)
+  
+  max_week <- eventReactive(input$run, {
+      week_inorder(22, input$season)
+  },
+  ignoreNULL = FALSE)
+  
+  # Create datasets of final observed truth and truth as known at week displayed
+  final_truth <- reactive({
+    filter(truth_1(), issue == min(max(issue), paste0(substr(season, 6, 9), 28))) %>%
       select(order_week, ILI)
+  }) 
+ 
+  current_truth <- reactive({
+    
+    if (as.numeric(input$week) < 40) {
+      this_issue <- as.integer(paste0(substr(head(truth_1()$season, 1), 6, 9), 
+                                 str_pad(input$week, 2, "left", "0")))
+    } else {
+      this_issue <- as.integer(paste0(substr(head(truth_1()$season, 1), 1, 4), input$week))
+    }
+    
+    filter(truth_1(), issue == this_issue) %>%
+      select(order_week, ILI, season, issue)
+  })
+  
+  # Update week automatically as slider is moved
+  order_week <- reactive({
+    week_inorder(input$week, head(current_truth()$season, 1))
   })
   
   point_forecasts <- reactive({
-    filter(forecasts_1(), order_week == input$week, type == "Point") %>%
+    filter(forecasts_1(), order_week == order_week(), type == "Point") %>%
       select(target, value, model) %>%
       # Note week is the week BEING forecast, NOT the week forecast received
-      mutate(order_week = input$week + as.numeric(gsub(" wk ahead", "", target))) %>%
+      mutate(order_week = order_week() + as.numeric(gsub(" wk ahead", "", target))) %>%
       select(-target) %>%
       # Attach forecast bins to point prediction of last observed value
-      bind_rows(tibble(order_week = input$week,
+      bind_rows(tibble(order_week = order_week(),
                        # model = factor(unique(forecasts_1()$model)),
-                       value = last(point_observed()$ILI)))
+                       value = last(current_truth()$ILI)))
   })
   
-  wk_label <- reactive({
-    wk_label[ifelse(as.numeric(wk_label) >= 40, as.numeric(wk_label),
-                    as.numeric(wk_label) + 52) <= max(point_forecasts()$week)]
-  })
   
   bounds <- reactive({
-    filter(forecasts_1(), order_week == input$week, type == "Bin") %>%
+    filter(forecasts_1(), order_week == order_week(), type == "Bin") %>%
       # Determine upper and lower bounds for each target
       group_by(model, target) %>%
       # Calculate cumulative probability for each bin
@@ -116,19 +169,18 @@ server <- function(input, output, session) {
       # Create lower and upper bounds as min and max of the remaining probabilities
       mutate(lower = min(as.numeric(bin_start_incl)),
              upper = max(as.numeric(bin_start_incl)),
-             order_week = input$week + as.numeric(gsub(" wk ahead", "", target))) %>%
+             order_week = order_week() + as.numeric(gsub(" wk ahead", "", target))) %>%
       ungroup() %>%
       # Only keep one copy of each week's upper and lower bound
       select(model, order_week, lower, upper) %>%
       distinct() %>%
       # Attach forecast bins to point prediction of last observed value
-      bind_rows(tibble(order_week = input$week,
+      bind_rows(tibble(order_week = order_week(),
                        # model = factor(unique(forecasts_1()$model)),
-                       lower = last(point_observed()$ILI),
-                       upper = last(point_observed()$ILI)))
+                       lower = last(current_truth()$ILI),
+                       upper = last(current_truth()$ILI)))
     
   })
-  
   
   output$time_plot <- renderPlot({
     
@@ -136,30 +188,34 @@ server <- function(input, output, session) {
       # Add shading for 80% CI for average
       geom_ribbon(data = bounds(), aes(x = order_week, ymin = lower, ymax = upper),
                   alpha = 0.3, fill = "tomato") +
+      # Add full season observed values
+      geom_line(data = final_truth(), aes(order_week, ILI), color = "darkgray", alpha = 1) +
+      # Add observed values
+      geom_line(data = current_truth(), aes(order_week, ILI), color = "black") +
       # Add point prediction lines for each team
       geom_line(aes(order_week, value), color = "tomato") +
-      # Add observed values
-      geom_line(data = point_observed(), aes(order_week, ILI), color = "black") +
       # Add horizontal line of baseline
       # geom_segment(aes(x = 40, xend = last_plot_week + 4,
       #                  y = 2.2, yend = 2.2),
       #              linetype = 3)  +
-      theme_minimal() +
-      labs(y = "Weighted ILI %") #+
-      # scale_x_continuous(name = "MMWR Week",
-      #                    breaks = seq(40, max(point_forecasts()$order_week), 2),
-      #                    labels = wk_label()) +
+      labs(y = "Weighted ILI %") +
+      scale_x_continuous(name = "MMWR Week",
+                         limits = c(40, max_week()),
+                         breaks = seq(40, max_week(), 2),
+                         labels = wk_label()) +
       # scale_y_continuous(breaks = seq(0, ceiling(max(3, max(plot_points$value, na.rm=T),
       #                                                max(bounds$upper, na.rm=T))), 1),
       #                    limits = c(0, ceiling(max(3, max(plot_points$value, na.rm=T), 
       #                                              max(bounds$upper, na.rm=T),
       #                                              bounds$upper[bounds$week == last_week + 2] + 0.75)))) +
-
+      theme_classic()
     
     
   })
   
 }
+
+
 
 # Run the application 
 shinyApp(ui = ui, server = server)
