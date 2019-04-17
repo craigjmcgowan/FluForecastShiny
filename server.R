@@ -3,53 +3,8 @@ library(shinyWidgets)
 library(dplyr)
 library(ggplot2)
 library(stringr)
-
-##### UI #####
-ui <- fluidPage(
-   
-   # Application title
-   titlePanel("Influenza Forecasts"),
-   
-   # Sidebar with inputs for resolution, location, season 
-   sidebarLayout(
-      sidebarPanel(
-         selectInput("res", label = "Forecast Resolution",
-                     choices = c("National" = "nat",
-                                 "HHS Regions" = "reg",
-                                 "States" = "state"),
-                     selected = "nat"),
-         selectInput("loc", label = "Location",
-                     choices = c("USA" = "US National", "HHS Region 1", "HHS Region 2", 
-                                 "HHS Region 3", "HHS Region 4", "HHS Region 5",
-                                 "HHS Region 6", "HHS Region 7", "HHS Region 8",
-                                 "HHS Region 9", "HHS Region 10", state.name)),
-         selectInput("season", label = "Season",
-                     choices = c("2014-2015", "2015-2016", "2016-2017",
-                                 "2017-2018", "2018-2019"),
-                     selected = "2018-2019"),
-         selectInput("model", label = "Model",
-                     choices = c("Ensemble" = "ens-month-target-type-based-weights",
-                                 "Harmonic Regression" = "Dynamic Harmonic Model",
-                                 "Subtype-weighted Historical Average" = 
-                                   "Subtype Historical Average",
-                                 "Unweighted Historical Average" = "Historical Average"),
-                     selected = "ens-month-target-type-based-weights"),
-         actionButton("run", label = "Update")
-      ),
-      
-      # Show a plot of the generated distribution
-      mainPanel(
-        plotOutput("time_plot"),
-        
-        sliderTextInput(inputId = "week", label = "Calendar Week", 
-                        choices = c(as.character(40:52), as.character(1:18)),
-                        selected = as.character(this_week), grid = TRUE,
-                        hide_min_max = TRUE)
-        
-      )
-   )
-)
-
+library(leaflet)
+library(USAboundaries)
 
 ##### SERVER #####
 server <- function(input, output, session) {
@@ -73,7 +28,7 @@ server <- function(input, output, session) {
                       selected = head(choices, 1)
     )
   })
-    
+  
   # Update week slider if a season with 53 weeks is selected
   observeEvent(input$run, {
     
@@ -116,7 +71,7 @@ server <- function(input, output, session) {
   ignoreNULL = FALSE)
   
   max_week <- eventReactive(input$run, {
-      week_inorder(22, input$season)
+    week_inorder(22, input$season)
   },
   ignoreNULL = FALSE)
   
@@ -125,12 +80,12 @@ server <- function(input, output, session) {
     filter(truth_1(), issue == min(max(issue), paste0(substr(season, 6, 9), 28))) %>%
       select(order_week, ILI)
   }) 
- 
+  
   current_truth <- reactive({
     
     if (as.numeric(input$week) < 40) {
       this_issue <- as.integer(paste0(substr(head(truth_1()$season, 1), 6, 9), 
-                                 str_pad(input$week, 2, "left", "0")))
+                                      str_pad(input$week, 2, "left", "0")))
     } else {
       this_issue <- as.integer(paste0(substr(head(truth_1()$season, 1), 1, 4), input$week))
     }
@@ -213,10 +168,15 @@ server <- function(input, output, session) {
     
   })
   
+  # Create leaflet map
+  output$map_plot <- renderLeaflet({
+    leaflet(state_shapes2) %>% 
+      setView(lat = 37.5, lng = -95, zoom = 3) %>%
+      addTiles() %>%
+      addPolygons(color = "#444444", weight = 1, smoothFactor = 0.5,
+                  opacity = 1.0, fillOpacity = 0.5,
+                  fillColor = ~colorQuantile("YlOrRd", ILI)(ILI),
+                  highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                      bringToFront = TRUE)) 
+  })
 }
-
-
-
-# Run the application 
-shinyApp(ui = ui, server = server)
-

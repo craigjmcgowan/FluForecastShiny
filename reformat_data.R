@@ -37,14 +37,29 @@ saveRDS(nat_reg_forecasts, file = "Data/nat_reg_forecasts.Rds")
 
 # Observed flu data
 load('../FluForecast/Data/ili.Rdata')
+load('../FluForecast/Data/ili_state.Rdata')
 
 # Collapse observed ILI into single data file
 all_observed <- bind_rows(ili_init_pub_list) %>%
   mutate(season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9))) %>%
-  filter(season %in% c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")) %>%
+  filter(season %in% c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019"),
+         week %in% c(1:18, 40:53)) %>%
   select(season, location, week, year, release_date, epiweek, issue, lag, ILI) %>%
   mutate(order_week = week_inorder(week, season),
-         issue_week = as.numeric(substr(issue, 5, 6)))
+         issue_week = as.numeric(substr(issue, 5, 6)),
+         release_date = as.Date(release_date)) %>%
+  bind_rows(bind_rows(state_ili_init_pub_list) %>%
+    unique() %>%
+    mutate(season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9)),
+           pub_season = case_when(as.numeric(substr(issue, 5, 6)) >= 40 ~ 
+                                    paste0(substr(issue, 1, 4), "-", as.numeric(substr(issue, 1, 4)) + 1),
+                                  TRUE ~ paste0(as.numeric(substr(issue, 1, 4)) - 1, "-", substr(issue, 1, 4)))) %>%
+    filter(season %in% c("2014-2015", "2015-2016", "2016-2017") |
+             season == pub_season, week %in% c(1:18, 40:53)) %>%
+    select(season, location, week, year, release_date, epiweek, issue, lag, ILI) %>%
+    mutate(order_week = week_inorder(week, season),
+           issue_week = as.numeric(substr(issue, 5, 6)))
+  )
 
 # Save RDS output for use in Shiny
 saveRDS(all_observed, file = "Data/observed_ili.Rds")
