@@ -41,14 +41,36 @@ state_region <- tibble(
 )
 
 # Load mapping data
-state_shapes <- USAboundaries::us_states() 
-
-state_shapes <- subset(state_shapes, state_shapes$state_abbr %in% state.abb)
-
 recent_flu <- all_observed %>%
-  filter(season == "2018-2019", week == 14, lag == 0, location %in% state.name) %>%
+  filter(season == "2018-2019", week == 14, lag == 0, location %in% c(state.name, "US National")) %>%
+  mutate(location = case_when(location == "US National" ~ "United States",
+                              TRUE ~ location)) %>%
   select(location, ILI)
 
-state_shapes2 <- left_join(state_shapes, recent_flu, by = c("name" = "location"))
+state_shapes <- USAboundaries::us_states()  %>%
+  filter(state_abbr %in% state.abb) %>%
+  left_join(recent_flu, by = c("name" = "location"))
 
 
+# National shape file
+nat_shape <- rgdal::readOGR("Data/TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp",
+                            GDAL1_integer64_policy = TRUE)
+
+nat_shape <- subset(nat_shape, nat_shape$NAME == "United States")
+
+names(nat_shape) <- tolower(names(nat_shape))
+
+nat_shape$ILI <- recent_flu$ILI[recent_flu$location == "United States"]
+
+# Create list of shape files to use in plot
+plot_shapes <- list("nat" = nat_shape,
+                    "reg" = nat_shape,
+                    "state" = state_shapes)
+
+# nat_shape <- readRDS('Data/nat_sf.RDS') %>%
+#   rename(name = NAME_0) %>%
+#   left_join(recent_flu, by = c("name" = "location"))
+
+# 
+# state_shapes <- subset(state_shapes, state_shapes$state_abbr %in% state.abb) %>%
+#   left_join(

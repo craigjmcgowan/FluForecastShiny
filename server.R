@@ -169,17 +169,16 @@ server <- function(input, output, session) {
     
   })
   
-  # Create leaflet map
+  ##### Create leaflet map #####
   output$map_plot <- renderLeaflet({
-    leaflet(state_shapes2) %>% 
+    leaflet(plot_shapes[[input$res]]) %>% 
       setView(lng = -93.85, lat = 37.45, zoom = 3) %>%
       addTiles() %>%
       addPolygons(color = "#444444", weight = 1, smoothFactor = 0.5,
                   opacity = 1.0, fillOpacity = 0.5,
-                  fillColor = ~colorQuantile("YlOrRd", ILI)(ILI),
+                  fillColor = ~colorNumeric("YlOrRd", 0:8)(ILI),
                   highlightOptions = highlightOptions(color = "white", weight = 2,
                                                       bringToFront = TRUE),
-                  popup = ~paste0("<b>", name, "</b><br>",  round(ILI, 3))) 
+                  popup = ~paste0("<b>", name, "</b><br>",  round(ILI, 3)))
   })
 }
-?navbarPage
