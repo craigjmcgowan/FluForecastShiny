@@ -5,6 +5,7 @@ library(ggplot2)
 library(stringr)
 library(leaflet)
 library(USAboundaries)
+library(htmltools)
 
 ##### UI #####
 ui <- fluidPage(

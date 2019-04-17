@@ -5,6 +5,7 @@ library(ggplot2)
 library(stringr)
 library(leaflet)
 library(USAboundaries)
+library(htmltools)
 
 ##### SERVER #####
 server <- function(input, output, session) {
@@ -171,12 +172,14 @@ server <- function(input, output, session) {
   # Create leaflet map
   output$map_plot <- renderLeaflet({
     leaflet(state_shapes2) %>% 
-      setView(lat = 37.5, lng = -95, zoom = 3) %>%
+      setView(lng = -93.85, lat = 37.45, zoom = 3) %>%
       addTiles() %>%
       addPolygons(color = "#444444", weight = 1, smoothFactor = 0.5,
                   opacity = 1.0, fillOpacity = 0.5,
                   fillColor = ~colorQuantile("YlOrRd", ILI)(ILI),
                   highlightOptions = highlightOptions(color = "white", weight = 2,
-                                                      bringToFront = TRUE)) 
+                                                      bringToFront = TRUE),
+                  popup = ~paste0("<b>", name, "</b><br>",  round(ILI, 3))) 
   })
 }
+?navbarPage
