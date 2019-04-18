@@ -171,9 +171,19 @@ server <- function(input, output, session) {
   
   ##### Create leaflet map #####
   output$map_plot <- renderLeaflet({
-    leaflet(plot_shapes[[input$res]]) %>% 
-      setView(lng = -93.85, lat = 37.45, zoom = 3) %>%
-      addTiles() %>%
+    leaflet() %>% 
+      setView(lng = -93.85, lat = 37.45, zoom = 4) %>%
+      addTiles(urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+               attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>')
+  })
+  
+  plot_data <- reactive({
+    plot_shapes[[input$res]]
+  })
+  
+  observe({
+    leafletProxy("map_plot", data = plot_data()) %>%
+      clearShapes() %>%
       addPolygons(color = "#444444", weight = 1, smoothFactor = 0.5,
                   opacity = 1.0, fillOpacity = 0.5,
                   fillColor = ~colorNumeric("YlOrRd", 0:8)(ILI),

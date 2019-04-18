@@ -66,11 +66,3 @@ nat_shape$ILI <- recent_flu$ILI[recent_flu$location == "United States"]
 plot_shapes <- list("nat" = nat_shape,
                     "reg" = nat_shape,
                     "state" = state_shapes)
-
-# nat_shape <- readRDS('Data/nat_sf.RDS') %>%
-#   rename(name = NAME_0) %>%
-#   left_join(recent_flu, by = c("name" = "location"))
-
-# 
-# state_shapes <- subset(state_shapes, state_shapes$state_abbr %in% state.abb) %>%
-#   left_join(
