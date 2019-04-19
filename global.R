@@ -12,7 +12,8 @@ all_forecasts <- readRDS("Data/nat_reg_forecasts.Rds")  #%>%
 
 
 # Load in observed flu data
-all_observed <- readRDS("Data/observed_ili.Rds")
+rolling_ili <- readRDS("Data/observed_ili.Rds")
+final_ili <- readRDS("Data/final_ili.Rds")
 
 # Current MMWR week
 if (MMWRweek(Sys.Date())[[3]] == 1) {
@@ -41,7 +42,7 @@ state_region <- tibble(
 )
 
 # Load mapping data
-recent_flu <- all_observed %>%
+recent_flu <- rolling_ili %>%
   filter(season == "2018-2019", week == 14, lag == 0, location %in% c(state.name, "US National")) %>%
   mutate(location = case_when(location == "US National" ~ "United States",
                               TRUE ~ location)) %>%

@@ -40,7 +40,7 @@ load('../FluForecast/Data/ili.Rdata')
 load('../FluForecast/Data/ili_state.Rdata')
 
 # Collapse observed ILI into single data file
-all_observed <- bind_rows(ili_init_pub_list) %>%
+rolling_observed <- bind_rows(ili_init_pub_list) %>%
   mutate(season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9))) %>%
   filter(season %in% c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019"),
          week %in% c(1:18, 40:53)) %>%
@@ -61,5 +61,17 @@ all_observed <- bind_rows(ili_init_pub_list) %>%
            issue_week = as.numeric(substr(issue, 5, 6)))
   )
 
+# Final truth
+final_observed <- mutate(ili_current, season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9))) %>%
+  filter(year > 2014 | season == "2014-2015") %>%
+  select(season, location, week, ILI) %>%
+  bind_rows(
+    mutate(state_current, season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9))) %>%
+      filter(year > 2014 | season == "2014-2015") %>%
+      select(season, location, week, ILI)
+  ) %>%
+  mutate(order_week = week_inorder(week, season))
+
 # Save RDS output for use in Shiny
-saveRDS(all_observed, file = "Data/observed_ili.Rds")
+saveRDS(rolling_observed, file = "Data/rolling_ili.Rds")
+saveRDS(final_observed, file = "Data/final_ili.Rds")

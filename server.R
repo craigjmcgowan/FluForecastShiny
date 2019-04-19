@@ -31,7 +31,7 @@ server <- function(input, output, session) {
   })
   
   # Update week slider if a season with 53 weeks is selected
-  observeEvent(input$run, {
+  observe({
     
     # Update slider based on season for 52/53 weeks
     if (input$season == "2014-2015") {
@@ -51,47 +51,39 @@ server <- function(input, output, session) {
   
   # Create datasets of forecasted values and truth -----
   # Update location and season only on clicks
-  truth_1 <- eventReactive(input$run, {
-    filter(all_observed, season == input$season, location == input$loc)
-  },
-  ignoreNULL = FALSE)
-  
-  forecasts_1 <- eventReactive(input$run, {
+  forecasts_1 <- reactive({
     filter(all_forecasts, season == input$season, location == input$loc,
            model == input$model)
-  },
-  ignoreNULL = FALSE)
+  })
   
-  wk_label <- eventReactive(input$run, {
+  wk_label <- reactive({
     if (input$season == "2014-2015") {
       c(as.character(seq(40, 52, 2)), as.character(seq(1, 21, 2)))
     } else {
       c(as.character(seq(40, 52, 2)), as.character(seq(2, 22, 2)))
     }
-  },
-  ignoreNULL = FALSE)
+  })
   
-  max_week <- eventReactive(input$run, {
+  max_week <- reactive({
     week_inorder(22, input$season)
-  },
-  ignoreNULL = FALSE)
+  })
   
   # Create datasets of final observed truth and truth as known at week displayed
   final_truth <- reactive({
-    filter(truth_1(), issue == min(max(issue), paste0(substr(season, 6, 9), 28))) %>%
-      select(order_week, ILI)
+    filter(final_ili, location == input$loc, season == input$season) %>%
+      select(order_week, ILI, season)
   }) 
   
   current_truth <- reactive({
     
     if (as.numeric(input$week) < 40) {
-      this_issue <- as.integer(paste0(substr(head(truth_1()$season, 1), 6, 9), 
+      this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 6, 9), 
                                       str_pad(input$week, 2, "left", "0")))
     } else {
-      this_issue <- as.integer(paste0(substr(head(truth_1()$season, 1), 1, 4), input$week))
+      this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 1, 4), input$week))
     }
     
-    filter(truth_1(), issue == this_issue) %>%
+    filter(rolling_ili, location == input$loc, season == input$season, issue == this_issue) %>%
       select(order_week, ILI, season, issue)
   })
   
@@ -170,11 +162,17 @@ server <- function(input, output, session) {
   })
   
   ##### Create leaflet map #####
+  
+  # Set palette options
+  palData <- 0:13
+  pal <- colorNumeric("YlOrRd", palData)
+  
   output$map_plot <- renderLeaflet({
     leaflet() %>% 
       setView(lng = -93.85, lat = 37.45, zoom = 4) %>%
       addTiles(urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
-               attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>')
+               attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>')%>%
+      addLegend('bottomleft', pal = pal, values = palData)
   })
   
   plot_data <- reactive({
@@ -182,13 +180,14 @@ server <- function(input, output, session) {
   })
   
   observe({
+    
     leafletProxy("map_plot", data = plot_data()) %>%
       clearShapes() %>%
       addPolygons(color = "#444444", weight = 1, smoothFactor = 0.5,
                   opacity = 1.0, fillOpacity = 0.5,
-                  fillColor = ~colorNumeric("YlOrRd", 0:8)(ILI),
+                  fillColor = ~pal(ILI),
                   highlightOptions = highlightOptions(color = "white", weight = 2,
                                                       bringToFront = TRUE),
-                  popup = ~paste0("<b>", name, "</b><br>",  round(ILI, 3)))
+                  popup = ~paste0("<b>", name, "</b><br>",  round(ILI, 3))) 
   })
 }

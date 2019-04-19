@@ -51,8 +51,6 @@ navbarPage(
                                               "Subtype Historical Average",
                                             "Unweighted Historical Average" = "Historical Average"),
                                 selected = "ens-month-target-type-based-weights"),
-                   
-                    actionButton("run", label = "Update"),
                     
                    
                     # Plot
