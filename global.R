@@ -42,15 +42,11 @@ state_region <- tibble(
 )
 
 # Load mapping data
-recent_flu <- rolling_ili %>%
-  filter(season == "2018-2019", week == 14, lag == 0, location %in% c(state.name, "US National")) %>%
-  mutate(location = case_when(location == "US National" ~ "United States",
-                              TRUE ~ location)) %>%
-  select(location, ILI)
+
 
 state_shapes <- USAboundaries::us_states()  %>%
-  filter(state_abbr %in% state.abb) %>%
-  left_join(recent_flu, by = c("name" = "location"))
+  filter(state_abbr %in% state.abb)# %>%
+  # left_join(recent_flu, by = c("name" = "location"))
 
 
 # National shape file
@@ -61,9 +57,9 @@ nat_shape <- subset(nat_shape, nat_shape$NAME == "United States")
 
 names(nat_shape) <- tolower(names(nat_shape))
 
-nat_shape$ILI <- recent_flu$ILI[recent_flu$location == "United States"]
+# nat_shape$ILI <- recent_flu$ILI[recent_flu$location == "United States"]
 
 # Create list of shape files to use in plot
-plot_shapes <- list("nat" = nat_shape,
-                    "reg" = nat_shape,
-                    "state" = state_shapes)
+# plot_shapes <- list("nat" = nat_shape,
+#                     "reg" = nat_shape,
+#                     "state" = state_shapes)

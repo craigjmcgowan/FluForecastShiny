@@ -50,6 +50,30 @@ server <- function(input, output, session) {
   })
   
   # Create datasets of forecasted values and truth -----
+  
+  # Create datasets of final observed truth and truth as known at week displayed
+  final_truth <- reactive({
+    filter(final_ili, location == input$loc, season == input$season) %>%
+      select(order_week, ILI, season)
+  }) 
+  
+  current_truth <- reactive({
+    if (as.numeric(input$week) < 40) {
+      this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 6, 9), 
+                                      str_pad(input$week, 2, "left", "0")))
+    } else {
+      this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 1, 4), input$week))
+    }
+    
+    filter(rolling_ili, season == input$season, issue == this_issue) %>%
+      select(season, location, order_week, ILI, issue)
+  })
+
+  current_truth_location <- reactive({
+    filter(current_truth(), location == input$loc) %>%
+      select(order_week, ILI, season, issue)
+  })
+  
   # Update location and season only on clicks
   forecasts_1 <- reactive({
     filter(all_forecasts, season == input$season, location == input$loc,
@@ -68,28 +92,9 @@ server <- function(input, output, session) {
     week_inorder(22, input$season)
   })
   
-  # Create datasets of final observed truth and truth as known at week displayed
-  final_truth <- reactive({
-    filter(final_ili, location == input$loc, season == input$season) %>%
-      select(order_week, ILI, season)
-  }) 
-  
-  current_truth <- reactive({
-    
-    if (as.numeric(input$week) < 40) {
-      this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 6, 9), 
-                                      str_pad(input$week, 2, "left", "0")))
-    } else {
-      this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 1, 4), input$week))
-    }
-    
-    filter(rolling_ili, location == input$loc, season == input$season, issue == this_issue) %>%
-      select(order_week, ILI, season, issue)
-  })
-  
   # Update week automatically as slider is moved
   order_week <- reactive({
-    week_inorder(input$week, head(current_truth()$season, 1))
+    week_inorder(input$week, head(current_truth_location()$season, 1))
   })
   
   point_forecasts <- reactive({
@@ -101,7 +106,7 @@ server <- function(input, output, session) {
       # Attach forecast bins to point prediction of last observed value
       bind_rows(tibble(order_week = order_week(),
                        # model = factor(unique(forecasts_1()$model)),
-                       value = last(current_truth()$ILI)))
+                       value = last(current_truth_location()$ILI)))
   })
   
   
@@ -125,8 +130,8 @@ server <- function(input, output, session) {
       # Attach forecast bins to point prediction of last observed value
       bind_rows(tibble(order_week = order_week(),
                        # model = factor(unique(forecasts_1()$model)),
-                       lower = last(current_truth()$ILI),
-                       upper = last(current_truth()$ILI)))
+                       lower = last(current_truth_location()$ILI),
+                       upper = last(current_truth_location()$ILI)))
     
   })
   
@@ -139,7 +144,7 @@ server <- function(input, output, session) {
       # Add full season observed values
       geom_line(data = final_truth(), aes(order_week, ILI), color = "darkgray", alpha = 1) +
       # Add observed values
-      geom_line(data = current_truth(), aes(order_week, ILI), color = "black") +
+      geom_line(data = current_truth_location(), aes(order_week, ILI), color = "black") +
       # Add point prediction lines for each team
       geom_line(aes(order_week, value), color = "tomato") +
       # Add horizontal line of baseline
@@ -163,8 +168,41 @@ server <- function(input, output, session) {
   
   ##### Create leaflet map #####
   
+  # Join appropriate ILI measures onto shapefiles
+  map_data <- reactive({
+    if (input$res == "nat") {
+      
+      nat_shape$ILI <- filter(current_truth_location(), order_week == order_week()) %>%
+        mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
+        pull(ILI)
+      nat_shape
+      
+    } else if(input$res == "hhs") { # NEED TO UPDATE ONCE HHS SHAPEFILE EXISTS
+      
+      nat_shape$ILI <- filter(current_truth_location(), order_week == order_week()) %>%
+        mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
+        pull(ILI)
+      nat_shape
+      
+    } else if(input$res == "state") {
+      
+      left_join(
+        state_shapes,
+        filter(current_truth(), order_week == order_week()) %>%
+          mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
+          select(location, ILI),
+        by = c('name' = 'location')
+      )
+      
+    }
+  })
+  
+  
+  
+  
+  
   # Set palette options
-  palData <- 0:13
+  palData <- 0:10
   pal <- colorNumeric("YlOrRd", palData)
   
   output$map_plot <- renderLeaflet({
@@ -181,7 +219,7 @@ server <- function(input, output, session) {
   
   observe({
     
-    leafletProxy("map_plot", data = plot_data()) %>%
+    leafletProxy("map_plot", data = map_data()) %>%
       clearShapes() %>%
       addPolygons(color = "#444444", weight = 1, smoothFactor = 0.5,
                   opacity = 1.0, fillOpacity = 0.5,
