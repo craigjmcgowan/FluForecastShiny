@@ -31,13 +31,45 @@ nat_reg_forecasts <- bind_rows(
   filter(str_detect(target, "wk ahead")) %>%
   mutate(model = factor(model))
 
+# Create dataset of point forecasts
+point_forecasts <- bind_rows(
+  # filter(state_forecasts, type == "Point"),
+  filter(nat_reg_forecasts, type == "Point")
+ ) %>%
+  select(-type, -bin_start_incl)
+
+# Create dataset of bounds
+bounds <- bind_rows(
+  # filter(state_forecasts, type == "Bin"),
+  filter(nat_reg_forecasts, type == "Bin")
+  ) %>%
+  # Determine upper and lower bounds for each target
+  group_by(season, location, model, target, order_week) %>%
+  # Calculate cumulative probability for each bin
+  mutate(cumprob = cumsum(value),
+         low_50 = as.numeric(bin_start_incl[max(which(cumprob < 0.25))]),
+         high_50 = as.numeric(bin_start_incl[min(which(cumprob > 0.75))]),
+         low_80 = as.numeric(bin_start_incl[max(which(cumprob < 0.1))]),
+         high_80 = as.numeric(bin_start_incl[min(which(cumprob > 0.9))])) %>%
+  ungroup() %>%
+  # Only keep one copy of each week's upper and lower bound
+  select(season, location, model, target, order_week, low_50, high_50, low_80, high_80) %>%
+  distinct() 
+
+all_forecasts <- full_join(
+  point_forecasts,
+  bounds,
+  by = c("season", "location", "model", "target", "order_week")
+)
+
 # Save RDS output for use in Shiny app
-saveRDS(nat_reg_forecasts, file = "Data/nat_reg_forecasts.Rds")
+saveRDS(all_forecasts, file = "Data/all_forecasts.Rds")
 
 
 # Observed flu data
 load('../FluForecast/Data/ili.Rdata')
 load('../FluForecast/Data/ili_state.Rdata')
+
 
 # Collapse observed ILI into single data file
 rolling_observed <- bind_rows(ili_init_pub_list) %>%
@@ -75,3 +107,4 @@ final_observed <- mutate(ili_current, season = paste0(substr(season, 1, 4), "-",
 # Save RDS output for use in Shiny
 saveRDS(rolling_observed, file = "Data/rolling_ili.Rds")
 saveRDS(final_observed, file = "Data/final_ili.Rds")
+

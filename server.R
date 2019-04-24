@@ -1,11 +1,14 @@
 library(shiny)
 library(shinyWidgets)
 library(dplyr)
+library(purrr)
 library(ggplot2)
 library(stringr)
 library(leaflet)
 library(USAboundaries)
 library(htmltools)
+library(FluSight)
+library(MMWRweek)
 
 ##### SERVER #####
 server <- function(input, output, session) {
@@ -49,6 +52,11 @@ server <- function(input, output, session) {
     
   })
   
+  # Update week automatically as slider is moved
+  order_week <- reactive({
+    week_inorder(input$week, input$season)
+  })
+  
   # Create datasets of forecasted values and truth -----
   
   # Create datasets of final observed truth and truth as known at week displayed
@@ -58,20 +66,29 @@ server <- function(input, output, session) {
   }) 
   
   current_truth <- reactive({
-    if (as.numeric(input$week) < 40) {
-      this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 6, 9), 
-                                      str_pad(input$week, 2, "left", "0")))
-    } else {
-      this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 1, 4), input$week))
-    }
     
-    filter(rolling_ili, season == input$season, issue == this_issue) %>%
-      select(season, location, order_week, ILI, issue)
+    if (input$res == 'state' & input$season %in% c("2014-2015", "2015-2016", "2016-2017")) {
+      
+      filter(final_ili, season == input$season, order_week <= order_week()) %>%
+        select(season, location, order_week, ILI)
+    
+    } else {
+    
+      if (as.numeric(input$week) < 40) {
+        this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 6, 9), 
+                                        str_pad(input$week, 2, "left", "0")))
+      } else {
+        this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 1, 4), input$week))
+      }
+      
+      filter(rolling_ili, season == input$season, issue == this_issue) %>%
+        select(season, location, order_week, ILI)
+    }
   })
 
   current_truth_location <- reactive({
     filter(current_truth(), location == input$loc) %>%
-      select(order_week, ILI, season, issue)
+      select(order_week, ILI, season)
   })
   
   # Update location and season only on clicks
@@ -92,16 +109,14 @@ server <- function(input, output, session) {
     week_inorder(22, input$season)
   })
   
-  # Update week automatically as slider is moved
-  order_week <- reactive({
-    week_inorder(input$week, head(current_truth_location()$season, 1))
-  })
+  
   
   point_forecasts <- reactive({
-    filter(forecasts_1(), order_week == order_week(), type == "Point") %>%
+    filter(forecasts_1(), order_week == order_week()) %>%
       select(target, value, model) %>%
       # Note week is the week BEING forecast, NOT the week forecast received
-      mutate(order_week = order_week() + as.numeric(gsub(" wk ahead", "", target))) %>%
+      mutate(order_week = order_week() + as.numeric(gsub(" wk ahead", "", target)),
+             value = as.numeric(value)) %>%
       select(-target) %>%
       # Attach forecast bins to point prediction of last observed value
       bind_rows(tibble(order_week = order_week(),
@@ -111,22 +126,19 @@ server <- function(input, output, session) {
   
   
   bounds <- reactive({
-    filter(forecasts_1(), order_week == order_week(), type == "Bin") %>%
-      # Determine upper and lower bounds for each target
-      group_by(model, target) %>%
-      # Calculate cumulative probability for each bin
-      mutate(cumprob = cumsum(value)) %>%
-      # Only keep the rows within the 80% confidence range
-      filter(row_number() %in% 
-               c(max(which(cumprob < 0.1)), min(which(cumprob > 0.9)))) %>%
-      # Create lower and upper bounds as min and max of the remaining probabilities
-      mutate(lower = min(as.numeric(bin_start_incl)),
-             upper = max(as.numeric(bin_start_incl)),
-             order_week = order_week() + as.numeric(gsub(" wk ahead", "", target))) %>%
-      ungroup() %>%
-      # Only keep one copy of each week's upper and lower bound
-      select(model, order_week, lower, upper) %>%
-      distinct() %>%
+    filter(forecasts_1(), order_week == order_week()) %>%
+      # Select appropriate CI bounds based on user input
+      when(input$pred_int == "80%" ~ 
+             select(., model, target, order_week, lower = low_80, upper = high_80),
+           input$pred_int == "50%" ~ 
+             select(., model, target, order_week, lower = low_50, upper = high_50),
+           input$pred_int == "None" ~
+             select(., model, target, order_week, lower = value) %>%
+                mutate(upper = lower)) %>%
+      # Note week is the week BEING forecast, NOT the week forecast received
+      mutate(order_week = order_week() + as.numeric(gsub(" wk ahead", "", target)),
+             lower = as.numeric(lower),
+             upper = as.numeric(upper)) %>%
       # Attach forecast bins to point prediction of last observed value
       bind_rows(tibble(order_week = order_week(),
                        # model = factor(unique(forecasts_1()$model)),
@@ -138,7 +150,7 @@ server <- function(input, output, session) {
   output$time_plot <- renderPlot({
     
     ggplot(point_forecasts()) +
-      # Add shading for 80% CI for average
+      # Add shading for prediction interval
       geom_ribbon(data = bounds(), aes(x = order_week, ymin = lower, ymax = upper),
                   alpha = 0.3, fill = "tomato") +
       # Add full season observed values
@@ -211,10 +223,6 @@ server <- function(input, output, session) {
       addTiles(urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
                attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>')%>%
       addLegend('bottomleft', pal = pal, values = palData)
-  })
-  
-  plot_data <- reactive({
-    plot_shapes[[input$res]]
   })
   
   observe({

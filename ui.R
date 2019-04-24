@@ -1,11 +1,14 @@
 library(shiny)
 library(shinyWidgets)
 library(dplyr)
+library(purrr)
 library(ggplot2)
 library(stringr)
 library(leaflet)
 library(USAboundaries)
 library(htmltools)
+library(FluSight)
+library(MMWRweek)
 
 ##### UI #####
 navbarPage(
@@ -51,6 +54,9 @@ navbarPage(
                                               "Subtype Historical Average",
                                             "Unweighted Historical Average" = "Historical Average"),
                                 selected = "ens-month-target-type-based-weights"),
+                    selectInput("pred_int", label = "Prediction Interval",
+                                choices = c("80%", "50%", "None"),
+                                selected = "80%"),
                     
                    
                     # Plot
