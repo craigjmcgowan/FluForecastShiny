@@ -12,10 +12,10 @@ library(MMWRweek)
 
 ##### UI #####
 navbarPage(
-  "Influenza Forecasts", id = "nav",
+  "Protea Analytics", id = "nav",
            
   tabPanel(
-    "Interactive Map",
+    "Influenza Forecasts",
     
     div(
       class = "outer",
@@ -69,29 +69,37 @@ navbarPage(
                                     hide_min_max = TRUE)
       )
       
-      # tags$div(id="cite",
-      #          'Data compiled for ', tags$em('Coming Apart: The State of White America, 1960–2010'), ' by Charles Murray (Crown Forum, 2012).'
-      # )
     )
   ),
   
   tabPanel(
-    "What's being measured?"
+    "What's being measured?",
+    tags$h1("Measurement of Influenza Activity"),
+    tags$h3("Outpatient Influenza-Like Illness"),
+    "Influenza is a difficult disease to track, since the symptoms that it causes are also caused by many 
+    pathogens, such as conoraviruses and rhinoviruses. While a laboratory test exists to confirm influenza
+    infection, it is not widely used in outpatient visits as the treatment for all of the viruses that cause
+    these symptoms is similar unless the infection is caught quickly."
+    
   ),
   
   tabPanel(
-    "How are these forecasts made?"
+    "How are these forecasts made?",
+    "This page is currently under construction - check back later!"
   ),
   
   tabPanel(
-    "How accurate are the forecasts?"
+    "How accurate are the forecasts?",
+    "This page is currently under construction - check back later!"
   ),
   
   tabPanel(
-    "FAQs"
+    "FAQs",
+    "This page is currently under construction - check back later!"
   ),
   
   tabPanel(
-    "Contact me"
+    "Contact",
+    "This page is currently under construction - check back later!"
   )
 )
