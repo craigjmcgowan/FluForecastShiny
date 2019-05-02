@@ -9,6 +9,7 @@ library(USAboundaries)
 library(htmltools)
 library(FluSight)
 library(MMWRweek)
+library(sf)
 
 source("utils.R")
 
@@ -41,9 +42,7 @@ state_region <- tibble(
   nation = rep("US National", 50)
 )
 
-# Load mapping data
-
-
+# Load mapping data -----
 state_shapes <- USAboundaries::us_states()  %>%
   filter(state_abbr %in% state.abb)# %>%
   # left_join(recent_flu, by = c("name" = "location"))
@@ -63,3 +62,6 @@ names(nat_shape) <- tolower(names(nat_shape))
 # plot_shapes <- list("nat" = nat_shape,
 #                     "reg" = nat_shape,
 #                     "state" = state_shapes)
+
+
+# Load scores -----

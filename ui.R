@@ -9,6 +9,7 @@ library(USAboundaries)
 library(htmltools)
 library(FluSight)
 library(MMWRweek)
+library(sf)
 
 ##### UI #####
 navbarPage(
@@ -25,7 +26,7 @@ navbarPage(
         includeCSS("styles.css")
       ),
       
-      leafletOutput("map_plot", width = "100%", height = "100%"),
+      leafletOutput("mapPlot", width = "100%", height = "100%"),
       
       absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
                     draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto",

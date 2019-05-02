@@ -9,6 +9,7 @@ library(USAboundaries)
 library(htmltools)
 library(FluSight)
 library(MMWRweek)
+library(sf)
 
 ##### SERVER #####
 server <- function(input, output, session) {
@@ -25,11 +26,34 @@ server <- function(input, output, session) {
                                          "HHS Region 9", "HHS Region 10")
     if (input$res == "state") choices <- state.name
     
+    click <- input$mapPlot_shape_click
+    
+    # Save state clicked on - this will be NULL if clicked outside of a state area
+    if (!is.null(click)) {
+      clickState <- state_revgeocode(click$lng, click$lat)
+    } else {
+      clickState <- NULL
+    }
+    
+    # If a state was clicked on, update the selected variable accordingly
+    if (!is.null(clickState)) {
+      if (input$res == "nat") clickLocation <- head(choices, 1)
+      if (input$res == "reg") clickLocation <- state_region_mapper(clickState)
+      if (input$res == "state") clickLocation <- clickState
+    }
+    
+    # Check for click input
+    if (!is.null(clickState) && clickLocation %in% choices) {
+      selected <- clickLocation
+    } else {
+      selected <- head(choices, 1)
+    }
+    
     # Can also set the label and select items
     updateSelectInput(session, "loc",
                       label = "Location",
                       choices = choices,
-                      selected = head(choices, 1)
+                      selected = selected
     )
   })
   
@@ -74,12 +98,12 @@ server <- function(input, output, session) {
     
     } else {
     
-      if (as.numeric(input$week) < 40) {
-        this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 6, 9), 
-                                        str_pad(input$week, 2, "left", "0")))
-      } else {
-        this_issue <- as.integer(paste0(substr(head(final_truth()$season, 1), 1, 4), input$week))
-      }
+      this_issue <- ifelse(
+        as.numeric(input$week) < 40,
+        as.integer(paste0(substr(head(final_truth()$season, 1), 6, 9), 
+                          str_pad(input$week, 2, "left", "0"))),
+        as.integer(paste0(substr(head(final_truth()$season, 1), 1, 4), input$week))
+      )
       
       filter(rolling_ili, season == input$season, issue == this_issue) %>%
         select(season, location, order_week, ILI)
@@ -182,27 +206,35 @@ server <- function(input, output, session) {
   
   # Join appropriate ILI measures onto shapefiles
   map_data <- reactive({
-    if (input$res == "nat") {
-      
-      nat_shape$ILI <- filter(current_truth_location(), order_week == order_week()) %>%
+    if (input$res %in% c("nat", "hhs")) {
+      nat_shape$print_ILI <- filter(current_truth(), location == "US National", order_week == order_week()) %>%
+        mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
+        pull(ILI)
+      nat_shape$ILI <- filter(current_truth(), location == "US National", order_week == order_week()) %>%
         mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
         pull(ILI)
       nat_shape
-      
-    } else if(input$res == "hhs") { # NEED TO UPDATE ONCE HHS SHAPEFILE EXISTS
-      
-      nat_shape$ILI <- filter(current_truth_location(), order_week == order_week()) %>%
-        mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
-        pull(ILI)
-      nat_shape
-      
+    #   nat_shape$ILI <- filter(current_truth_location(), order_week == order_week()) %>%
+    #     mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
+    #     pull(ILI)
+    #   nat_shape
+    #   
+    # 
+    # } else if(input$res == "hhs") { # NEED TO UPDATE ONCE HHS SHAPEFILE EXISTS
+    # 
+    #   nat_shape$ILI <- filter(current_truth(), location == "US National", order_week == order_week()) %>%
+    #     mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
+    #     pull(ILI)
+    #   nat_shape
+
     } else if(input$res == "state") {
       
       left_join(
         state_shapes,
         filter(current_truth(), order_week == order_week()) %>%
-          mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
-          select(location, ILI),
+          mutate(print_ILI = ILI,
+                 ILI = ifelse(ILI > 10, 10, ILI)) %>%
+          select(location, print_ILI, ILI),
         by = c('name' = 'location')
       )
       
@@ -217,7 +249,7 @@ server <- function(input, output, session) {
   palData <- 0:10
   pal <- colorNumeric("YlOrRd", palData)
   
-  output$map_plot <- renderLeaflet({
+  output$mapPlot <- renderLeaflet({
     leaflet() %>% 
       setView(lng = -93.85, lat = 37.45, zoom = 4) %>%
       addTiles(urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
@@ -227,13 +259,13 @@ server <- function(input, output, session) {
   
   observe({
     
-    leafletProxy("map_plot", data = map_data()) %>%
+    leafletProxy("mapPlot", data = map_data()) %>%
       clearShapes() %>%
       addPolygons(color = "#444444", weight = 1, smoothFactor = 0.5,
                   opacity = 1.0, fillOpacity = 0.5,
                   fillColor = ~pal(ILI),
                   highlightOptions = highlightOptions(color = "white", weight = 2,
                                                       bringToFront = TRUE),
-                  popup = ~paste0("<b>", name, "</b><br>",  round(ILI, 3))) 
+                  popup = ~paste0("<b>", name, "</b><br>",  round(print_ILI, 3))) 
   })
 }

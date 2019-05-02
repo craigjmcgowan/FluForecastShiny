@@ -117,3 +117,31 @@ read_forecasts <- function(dir, challenge = 'ilinet', these_weeks = c(),
   
   return(subs)
 }
+
+# State to region mapper
+state_region_mapper <- function(state) {
+  case_when(state %in% c("Maine", "New Hampshire", "Vermont", "Massachusetts",
+                         "Rhode Island", "Connecticut") ~ "HHS Region 1",
+            state %in% c("New York", "New Jersey") ~ "HHS Region 2",
+            state %in% c("Pennsylvania", "Maryland", "Delaware", "West Virginia",
+                         "Virginia") ~ "HHS Region 3",
+            state %in% c("Kentucky", "North Carolina", "South Carolina", "Tennessee",
+                         "Mississippi", "Alabama", "Georgia", "Florida") ~ "HHS Region 4",
+            state %in% c("Ohio", "Indiana", "Illinois", "Michigan", "Wisconsin",
+                         "Minnesota") ~ "HHS Region 5",
+            state %in% c("Louisiana", "Arkansas", "Texas", "Oklahoma", 
+                         "New Mexico") ~ "HHS Region 6",
+            state %in% c("Missouri", "Iowa", "Kansas", "Nebraska") ~ "HHS Region 7",
+            state %in% c("North Dakota", "South Dakota", "Montana", "Wyoming", 
+                         "Colorado", "Utah") ~ "HHS Region 8",
+            state %in% c("Arizona", "Nevada", "California", "Hawaii") ~ "HHS Region 9",
+            state %in% c("Idaho", "Oregon", "Washington", "Alaska") ~ "HHS Region 10",
+            TRUE ~ NA_character_)
+}
+
+# Function to match long and lat coordinates to a state name
+state_revgeocode <- function(long, lat) {
+  state_shapes_pl <- st_transform(state_shapes, 2163)  
+  pnt_sf <- st_transform(st_sfc(st_point(c(long, lat)),crs = 4326), 2163)
+  state_shapes_pl[which(st_intersects(pnt_sf, state_shapes_pl, sparse = FALSE)), ]$name 
+}
