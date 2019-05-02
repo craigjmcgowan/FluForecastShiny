@@ -77,7 +77,7 @@ navbarPage(
     tags$h1("Measurement of Influenza Activity"),
     tags$h3("Outpatient Influenza-Like Illness"),
     "Influenza is a difficult disease to track, since the symptoms that it causes are also caused by many 
-    pathogens, such as conoraviruses and rhinoviruses. While a laboratory test exists to confirm influenza
+    pathogens, such as coronaviruses and rhinoviruses. While a laboratory test exists to confirm influenza
     infection, it is not widely used in outpatient visits as the treatment for all of the viruses that cause
     these symptoms is similar unless the infection is caught quickly."
     
