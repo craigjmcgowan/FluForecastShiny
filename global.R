@@ -20,11 +20,7 @@ rolling_ili <- readRDS("Data/rolling_ili.Rds")
 final_ili <- readRDS("Data/final_ili.Rds")
 
 # Current MMWR week
-if (MMWRweek(Sys.Date())[[3]] == 1) {
-  this_week <- MMWRweek(Sys.Date())[[2]] - 3
-} else {
-  this_week <- MMWRweek(Sys.Date())[[2]] - 2
-}
+this_week <- tail(final_ili$week, 1)
 
 # Mappings between states/regions/national
 state_region <- tibble(
