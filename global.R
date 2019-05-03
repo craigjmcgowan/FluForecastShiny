@@ -44,24 +44,23 @@ state_region <- tibble(
 
 # Load mapping data -----
 state_shapes <- USAboundaries::us_states()  %>%
-  filter(state_abbr %in% state.abb)# %>%
-  # left_join(recent_flu, by = c("name" = "location"))
+  filter(state_abbr %in% state.abb) %>%
+  mutate(region = state_region_mapper(name))
 
+reg_shapes <- state_shapes %>%
+  group_by(region) %>%
+  summarise() %>%
+  rename(name = region)
 
-# National shape file
-nat_shape <- rgdal::readOGR("Data/TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp",
-                            GDAL1_integer64_policy = TRUE)
-
-nat_shape <- subset(nat_shape, nat_shape$NAME == "United States")
-
-names(nat_shape) <- tolower(names(nat_shape))
-
-# nat_shape$ILI <- recent_flu$ILI[recent_flu$location == "United States"]
-
-# Create list of shape files to use in plot
-# plot_shapes <- list("nat" = nat_shape,
-#                     "reg" = nat_shape,
-#                     "state" = state_shapes)
-
+nat_shape <- state_shapes %>%
+  mutate(country = "US National") %>%
+  group_by(country) %>%
+  summarise() %>%
+  rename(name = country)
 
 # Load scores -----
+nat_reg_scores <- readRDS("Data/nat_reg_scores.Rds")
+
+
+
+

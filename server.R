@@ -206,27 +206,28 @@ server <- function(input, output, session) {
   
   # Join appropriate ILI measures onto shapefiles
   map_data <- reactive({
-    if (input$res %in% c("nat", "hhs")) {
-      nat_shape$print_ILI <- filter(current_truth(), location == "US National", order_week == order_week()) %>%
-        mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
-        pull(ILI)
-      nat_shape$ILI <- filter(current_truth(), location == "US National", order_week == order_week()) %>%
-        mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
-        pull(ILI)
-      nat_shape
-    #   nat_shape$ILI <- filter(current_truth_location(), order_week == order_week()) %>%
-    #     mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
-    #     pull(ILI)
-    #   nat_shape
-    #   
-    # 
-    # } else if(input$res == "hhs") { # NEED TO UPDATE ONCE HHS SHAPEFILE EXISTS
-    # 
-    #   nat_shape$ILI <- filter(current_truth(), location == "US National", order_week == order_week()) %>%
-    #     mutate(ILI = ifelse(ILI > 10, 10, ILI)) %>%
-    #     pull(ILI)
-    #   nat_shape
-
+    if (input$res == "nat") {
+      
+      left_join(
+        nat_shape,
+        filter(current_truth(), order_week == order_week()) %>%
+          mutate(print_ILI = ILI,
+                 ILI = ifelse(ILI > 10, 10, ILI)) %>%
+          select(location, print_ILI, ILI),
+        by = c('name' = 'location')
+      )
+      
+    } else if (input$res == "reg") {
+      
+      left_join(
+        reg_shapes,
+        filter(current_truth(), order_week == order_week()) %>%
+          mutate(print_ILI = ILI,
+                 ILI = ifelse(ILI > 10, 10, ILI)) %>%
+          select(location, print_ILI, ILI),
+        by = c('name' = 'location')
+      )
+      
     } else if(input$res == "state") {
       
       left_join(
@@ -239,11 +240,8 @@ server <- function(input, output, session) {
       )
       
     }
+    
   })
-  
-  
-  
-  
   
   # Set palette options
   palData <- 0:10
@@ -268,4 +266,15 @@ server <- function(input, output, session) {
                                                       bringToFront = TRUE),
                   popup = ~paste0("<b>", name, "</b><br>",  round(print_ILI, 3))) 
   })
+  
+  
+  # Create data frame for score output to display
+  output$scoreTable <- renderDataTable({
+    filter(nat_reg_scores, location == input$scoreLocation,
+           season == input$scoreSeason, model == input$scoreModel,
+           score_type == input$scoreType)
+  })
+  
+  
+  
 }

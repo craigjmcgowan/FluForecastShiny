@@ -1,8 +1,7 @@
-library(dplyr)
-library(purrr)
+library(tidyverse)
 library(FluSight)
-library(stringr)
-library(tidyr)
+library(USAboundaries)
+library(sf)
 
 # Read in forecasts from raw CSVs and save as smaller RDS files for use in Shiny app
 source("utils.R")
@@ -124,22 +123,29 @@ nat_reg_truth <- final_observed %>%
                           ~ expand_truth(.x, week53 = weeks_53))) %>%
   select(-data, -weeks_53) 
 
+nat_reg_scores <- bind_rows(
+  # Log scores
+  nat_reg_forecasts %>%
+    nest(-season, -model, -order_week) %>%
+    left_join(select(nat_reg_truth, season, exp_truth),
+              by = "season") %>%
+    mutate(score = map2(data, exp_truth,
+                        ~ score_entry(.x, .y))) %>%
+    select(-data, -exp_truth) %>%
+    unnest() %>%
+    mutate(score_type = "log") %>%
+    filter(str_detect(target, "ahead")),
+  # MAE score
+  nat_reg_truth %>%
+    select(season, truth) %>%
+    unnest() %>%
+    filter(str_detect(target, "ahead")) %>%
+    left_join(point_forecasts,
+              by = c("location", "season", "target", "forecast_week")) %>%
+    mutate(score = abs(value - as.numeric(bin_start_incl)),
+           score_type = "mae") %>%
+    select(-value, -bin_start_incl)
+)
 
-nat_reg_log_scores <- nat_reg_forecasts %>%
-  nest(-season, -model, -order_week) %>%
-  left_join(select(nat_reg_truth, season, exp_truth),
-            by = "season") %>%
-  mutate(score = map2(data, exp_truth,
-                      ~ score_entry(.x, .y))) %>%
-  select(-data, -exp_truth) %>%
-  unnest() %>%
-  mutate(skill = exp(score)) %>%
-  filter(str_detect(target, "ahead")) 
-
-nat_reg_ae_scores <- nat_reg_truth %>%
-  select(season, truth) %>%
-  unnest() %>%
-  filter(str_detect(target, "ahead")) %>%
-  left_join(point_forecasts,
-            by = c("location", "season", "target", "forecast_week")) %>%
-  mutate(AE = abs(value - as.numeric(bin_start_incl))) 
+# Save scores
+saveRDS(nat_reg_scores, file = "Data/nat_reg_scores.Rds")
