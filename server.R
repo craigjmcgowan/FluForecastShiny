@@ -269,10 +269,40 @@ server <- function(input, output, session) {
   
   
   # Create data frame for score output to display
+  score_locations <- reactive({
+    case_when(is.null(input$scoreLocation) ~ c("US National", "HHS Region 1", "HHS Region 2",
+                                               "HHS Region 3", "HHS Region 4", "HHS Region 5",
+                                               "HHS Region 6", "HHS Region 7", "HHS Region 8",
+                                               "HHS Region 9", "HHS Region 10", state.name),
+              TRUE ~ input$scoreLocation)
+  })
+  
+  score_seasons <- reactive({
+    case_when(is.null(input$scoreSeason) ~ c("2014-2015", "2015-2016", "2016-2017",
+                                             "2017-2018", "2018-2019"),
+              TRUE ~ input$scoreSeason)
+  })
+  
+  score_model <- reactive({
+    case_when(is.null(input$scoreModel) ~ c("Ensemble", "Dynamic Harmonic Model",
+                                            "Subtype Historical Average", "Historical Average"),
+              TRUE ~ input$scoreModel)
+  })
+  
+  scores <- reactive({
+    filter(nat_reg_scores, location %in% score_locations(),
+           season %in% score_seasons(), model %in% score_model(),
+           score_type == input$scoreType) %>%
+      rename(Location = location, Season = season, Model = model, Target = target) %>%
+      when(input$groupTarget ~ group_by(., Location, Season, Model, Target),
+           TRUE ~ group_by(., Location, Season, Model)) %>%
+      summarize(`Mean Score` = mean(score)) %>%
+      mutate(`Mean Score` = case_when(input$scoreType == "log" ~ round(exp(`Mean Score`), 2),
+                                      TRUE ~ round(`Mean Score`, 2)))
+  })
+  
   output$scoreTable <- renderDataTable({
-    filter(nat_reg_scores, location == input$scoreLocation,
-           season == input$scoreSeason, model == input$scoreModel,
-           score_type == input$scoreType)
+    scores()
   })
   
   

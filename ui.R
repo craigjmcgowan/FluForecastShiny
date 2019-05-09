@@ -49,12 +49,12 @@ navbarPage(
                                             "2017-2018", "2018-2019"),
                                 selected = "2018-2019"),
                     selectInput("model", label = "Model",
-                                choices = c("Ensemble" = "ens-month-target-type-based-weights",
+                                choices = c("Ensemble",
                                             "Harmonic Regression" = "Dynamic Harmonic Model",
                                             "Subtype-weighted Historical Average" =
                                               "Subtype Historical Average",
                                             "Unweighted Historical Average" = "Historical Average"),
-                                selected = "ens-month-target-type-based-weights"),
+                                selected = "Ensemble"),
                     selectInput("pred_int", label = "Prediction Interval",
                                 choices = c("80%", "50%", "None"),
                                 selected = "80%"),
@@ -88,10 +88,49 @@ navbarPage(
     "How are these forecasts made?",
     "This page is currently under construction - check back later!"
   ),
-  
+
   tabPanel(
     "How accurate are the forecasts?",
-    "This page is currently under construction - check back later!"
+    fluidRow(
+      column(4,
+             selectInput("scoreLocation", "Location",
+                         choices = c("All locations" = "", "USA" = "US National",
+                                     "HHS Region 1", "HHS Region 2", "HHS Region 3", 
+                                     "HHS Region 4", "HHS Region 5", "HHS Region 6", 
+                                     "HHS Region 7", "HHS Region 8", "HHS Region 9", 
+                                     "HHS Region 10", state.name),
+                         multiple = TRUE)
+             ),
+      column(4,
+             selectInput("scoreSeason", label = "Season",
+                         choices = c("All seasons" = "", "2014-2015", "2015-2016", "2016-2017",
+                                     "2017-2018", "2018-2019"),
+                         multiple = TRUE)
+             ),
+      column(4,
+             selectInput("scoreModel", label = "Model",
+                         choices = c("All models" = "", "Ensemble" = "Ensemble",
+                                     "Harmonic Regression" = "Dynamic Harmonic Model",
+                                     "Subtype-weighted Historical Average" =
+                                       "Subtype Historical Average",
+                                     "Unweighted Historical Average" = "Historical Average"),
+                         multiple = TRUE)
+             )
+      ),
+    fluidRow(
+      column(4,
+             selectInput("scoreType", label = "Scoring Metric",
+                         choices = c("Mean Absolute Error" = "mae",
+                                     "Geometric Mean Probability" = "log"),
+                         selected = "mae")
+      ),
+      column(4,
+             checkboxInput("groupTarget", label = "Separate Scores by Target",
+                           value = TRUE)
+      )
+    ),
+    hr(),
+    dataTableOutput("scoreTable")
   ),
   
   tabPanel(
