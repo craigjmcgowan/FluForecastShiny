@@ -13,6 +13,12 @@ forecasts_1617 <- read_forecasts("RawData/2016-2017/NatReg")
 forecasts_1718 <- read_forecasts("RawData/2017-2018/NatReg")
 forecasts_1819 <- read_forecasts("RawData/2018-2019/NatReg")
 
+state_forecasts_1415 <- read_forecasts("RawData/2014-2015/States", challenge = 'state_ili')
+state_forecasts_1516 <- read_forecasts("RawData/2015-2016/States", challenge = 'state_ili')
+state_forecasts_1617 <- read_forecasts("RawData/2016-2017/States", challenge = 'state_ili')
+state_forecasts_1718 <- read_forecasts("RawData/2017-2018/States", challenge = 'state_ili')
+state_forecasts_1819 <- read_forecasts("RawData/2018-2019/States", challenge = 'state_ili')
+
 # Collapse forecasts into single data file
 nat_reg_forecasts <- bind_rows(
   bind_rows(modify_depth(forecasts_1415, 1, bind_rows), .id = 'model') %>%
@@ -29,18 +35,39 @@ nat_reg_forecasts <- bind_rows(
   mutate(order_week = week_inorder(forecast_week, season)) %>%
   select(-bin_end_notincl, -unit) %>%
   filter(str_detect(target, "wk ahead")) %>%
-  mutate(model = factor(model))
+  mutate(model = case_when(model == "ens-month-target-type-based-weights" ~ "Ensemble",
+                           TRUE ~ model),
+         model = factor(model))
+
+state_forecasts <- bind_rows(
+  bind_rows(modify_depth(state_forecasts_1415, 1, bind_rows), .id = 'model') %>%
+    mutate(season = "2014-2015"),
+  bind_rows(modify_depth(state_forecasts_1516, 1, bind_rows), .id = 'model') %>%
+    mutate(season = "2015-2016"),
+  bind_rows(modify_depth(state_forecasts_1617, 1, bind_rows), .id = 'model') %>%
+    mutate(season = "2016-2017"),
+  bind_rows(modify_depth(state_forecasts_1718, 1, bind_rows), .id = 'model') %>%
+    mutate(season = "2017-2018"),
+  bind_rows(modify_depth(state_forecasts_1819, 1, bind_rows), .id = 'model') %>%
+    mutate(season = "2018-2019")
+) %>%
+  mutate(order_week = week_inorder(forecast_week, season)) %>%
+  select(-bin_end_notincl, -unit) %>%
+  filter(str_detect(target, "wk ahead")) %>%
+  mutate(model = case_when(model == "ens-optimal-state" ~ "Ensemble",
+                           TRUE ~ model),
+         model = factor(model))
 
 # Create dataset of point forecasts
 point_forecasts <- bind_rows(
-  # filter(state_forecasts, type == "Point"),
+  filter(state_forecasts, type == "Point"),
   filter(nat_reg_forecasts, type == "Point")
  ) %>%
   select(-type, -bin_start_incl)
 
 # Create dataset of bounds
 bounds <- bind_rows(
-  # filter(state_forecasts, type == "Bin"),
+  filter(state_forecasts, type == "Bin"),
   filter(nat_reg_forecasts, type == "Bin")
   ) %>%
   # Determine upper and lower bounds for each target
@@ -91,7 +118,8 @@ rolling_observed <- bind_rows(ili_init_pub_list) %>%
     select(season, location, week, year, release_date, epiweek, issue, lag, ILI) %>%
     mutate(order_week = week_inorder(week, season),
            issue_week = as.numeric(substr(issue, 5, 6)))
-  )
+  ) %>%
+  arrange(season, location, order_week, issue_week)
 
 # Final truth
 final_observed <- mutate(ili_current, season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9))) %>%
@@ -123,6 +151,19 @@ nat_reg_truth <- final_observed %>%
                           ~ expand_truth(.x, week53 = weeks_53))) %>%
   select(-data, -weeks_53) 
 
+state_truth <- final_observed %>%
+  filter(location %in% state.name) %>%
+  select(-order_week) %>%
+  mutate(year = as.numeric(substr(season, 1, 4))) %>%
+  nest(-season, -year) %>%
+  mutate(truth = map2(data, year,
+                      ~ create_truth(fluview = FALSE, year = .y, weekILI = .x,
+                                     challenge = 'state_ili')),
+         weeks_53 = (year == 2014),
+         exp_truth = map2(truth, weeks_53,
+                          ~ expand_truth(.x, week53 = weeks_53))) %>%
+  select(-data, -weeks_53) 
+
 nat_reg_scores <- bind_rows(
   # Log scores
   nat_reg_forecasts %>%
@@ -147,5 +188,34 @@ nat_reg_scores <- bind_rows(
     select(-value, -bin_start_incl)
 )
 
+state_scores <- bind_rows(
+  # Log scores
+  state_forecasts %>%
+    nest(-season, -model, -order_week) %>%
+    left_join(select(state_truth, season, exp_truth),
+              by = "season") %>%
+    mutate(score = map2(data, exp_truth,
+                        ~ score_entry(.x, .y))) %>%
+    select(-data, -exp_truth) %>%
+    unnest() %>%
+    mutate(score_type = "log") %>%
+    filter(str_detect(target, "ahead")),
+  # MAE score
+  state_truth %>%
+    select(season, truth) %>%
+    unnest() %>%
+    filter(str_detect(target, "ahead")) %>%
+    inner_join(point_forecasts,
+              by = c("location", "season", "target", "forecast_week")) %>%
+    mutate(score = abs(value - as.numeric(bin_start_incl)),
+           score_type = "mae") %>%
+    select(-value, -bin_start_incl)
+)
+
+all_scores <- bind_rows(
+  nat_reg_scores,
+  state_scores
+)
+
 # Save scores
-saveRDS(nat_reg_scores, file = "Data/nat_reg_scores.Rds")
+saveRDS(all_scores, file = "Data/all_scores.Rds")

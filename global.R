@@ -59,7 +59,7 @@ nat_shape <- state_shapes %>%
   rename(name = country)
 
 # Load scores -----
-nat_reg_scores <- readRDS("Data/nat_reg_scores.Rds")
+all_scores <- readRDS("Data/all_scores.Rds")
 
 
 

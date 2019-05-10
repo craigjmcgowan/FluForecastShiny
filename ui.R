@@ -91,14 +91,38 @@ navbarPage(
 
   tabPanel(
     "How accurate are the forecasts?",
+    tags$div(
+      tags$p(
+        "Forecast accuracy is evaluated in two different ways, which each measure slightly different aspects of 
+        the forecast."
+      ),
+      tags$ul(
+        tags$li(tags$b("Mean Absolute Error (MAE)"), " - Mean absolute error examines the accuracy of the point 
+                forecasts at future weeks, and represents the average amount that those point forecasts differ
+                from the observed values. An MAE of 0.2 means that those forecasts differ from the observed value
+                by 0.2%, on average. A ", tags$b("lower"), " MAE is a better score."), 
+        tags$li(tags$b("Geometric Mean Probability"), " - This score is the geometric mean probability assigned 
+                to the observed value. It is related to the log score, which is calculated by taking the natural
+                logarithm of the probability the model assigns to the correct outcome. The average of these log 
+                is exponentiated, with the final result representing the geometric mean of the probability
+                assigned to the observed outcome. A ", tags$b('higher'), " geometric mean probability is a better 
+                score.")
+      ),
+      tags$p(
+        "Use the drop down menus below to explore how forecast accuracy varies by location, season, and model type."
+      )
+    ),
     fluidRow(
       column(4,
              selectInput("scoreLocation", "Location",
-                         choices = c("All locations" = "", "USA" = "US National",
-                                     "HHS Region 1", "HHS Region 2", "HHS Region 3", 
-                                     "HHS Region 4", "HHS Region 5", "HHS Region 6", 
-                                     "HHS Region 7", "HHS Region 8", "HHS Region 9", 
-                                     "HHS Region 10", state.name),
+                         choices = list(`All locations` = "", 
+                                        `USA` = "US National",
+                                        `HHS Regions` = c("HHS Region 1", "HHS Region 2",
+                                                             "HHS Region 3", "HHS Region 4", 
+                                                             "HHS Region 5", "HHS Region 6",
+                                                             "HHS Region 7", "HHS Region 8", 
+                                                             "HHS Region 9", "HHS Region 10"),
+                                        `States` = c(state.name[state.name != "Florida"])),
                          multiple = TRUE)
              ),
       column(4,
