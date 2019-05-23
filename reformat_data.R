@@ -164,7 +164,7 @@ state_truth <- final_observed %>%
                           ~ expand_truth(.x, week53 = weeks_53))) %>%
   select(-data, -weeks_53) 
 
-nat_reg_scores <- bind_rows(
+nat_reg_scores <- full_join(
   # Log scores
   nat_reg_forecasts %>%
     nest(-season, -model, -order_week) %>%
@@ -174,7 +174,7 @@ nat_reg_scores <- bind_rows(
                         ~ score_entry(.x, .y))) %>%
     select(-data, -exp_truth) %>%
     unnest() %>%
-    mutate(score_type = "log") %>%
+    rename(log_score = score) %>%
     filter(str_detect(target, "ahead")),
   # MAE score
   nat_reg_truth %>%
@@ -183,12 +183,12 @@ nat_reg_scores <- bind_rows(
     filter(str_detect(target, "ahead")) %>%
     left_join(point_forecasts,
               by = c("location", "season", "target", "forecast_week")) %>%
-    mutate(score = abs(value - as.numeric(bin_start_incl)),
-           score_type = "mae") %>%
-    select(-value, -bin_start_incl)
+    mutate(mae_score = abs(value - as.numeric(bin_start_incl))) %>%
+    select(-value, -bin_start_incl),
+  by = c("model", "season", "order_week", "location", "target", "forecast_week")
 )
 
-state_scores <- bind_rows(
+state_scores <- full_join(
   # Log scores
   state_forecasts %>%
     nest(-season, -model, -order_week) %>%
@@ -198,7 +198,7 @@ state_scores <- bind_rows(
                         ~ score_entry(.x, .y))) %>%
     select(-data, -exp_truth) %>%
     unnest() %>%
-    mutate(score_type = "log") %>%
+    rename(log_score = score) %>%
     filter(str_detect(target, "ahead")),
   # MAE score
   state_truth %>%
@@ -207,9 +207,9 @@ state_scores <- bind_rows(
     filter(str_detect(target, "ahead")) %>%
     inner_join(point_forecasts,
               by = c("location", "season", "target", "forecast_week")) %>%
-    mutate(score = abs(value - as.numeric(bin_start_incl)),
-           score_type = "mae") %>%
-    select(-value, -bin_start_incl)
+    mutate(mae_score = abs(value - as.numeric(bin_start_incl))) %>%
+    select(-value, -bin_start_incl),
+  by = c("model", "season", "order_week", "location", "target", "forecast_week")
 )
 
 all_scores <- bind_rows(

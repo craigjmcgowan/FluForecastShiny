@@ -76,12 +76,29 @@ navbarPage(
   tabPanel(
     "What's being measured?",
     tags$h1("Measurement of Influenza Activity"),
-    tags$h3("Outpatient Influenza-Like Illness"),
-    "Influenza is a difficult disease to track, since the symptoms that it causes are also caused by many 
-    pathogens, such as coronaviruses and rhinoviruses. While a laboratory test exists to confirm influenza
-    infection, it is not widely used in outpatient visits as the treatment for all of the viruses that cause
-    these symptoms is similar unless the infection is caught quickly."
-    
+    tags$h3("Outpatient Influenza-like Illness"),
+    tags$div(
+      tags$p(
+        "Influenza is a difficult disease to track, since the symptoms that it causes are also caused by many 
+        pathogens, such as coronaviruses and rhinoviruses. While a laboratory test exists to confirm influenza
+        infection, it is not widely used in outpatient visits as the course of treatment for all of the viruses 
+        that cause these symptoms is similar unless the infection is caught quickly. As such, surveillance of 
+        influenza, especially outpatient influenza, often focuses on influenza-like illness as a proxy."
+      ),
+      tags$p(
+        "In the United States, surveillance of influenza activity is coordinated by the ",
+        tags$a(
+          href = "https://www.cdc.gov/flu/weekly/overview.htm", "Centers for Disease Control and Prevention."
+        ),
+        " Levels of outpatient influenza are reported from the US Outpatient Influenza-like Illness Surveillance 
+        Network (ILINet), a network of 2,200 outpatient providers that report weekly data on the total number of 
+        patients seen that week, along with the number of patients with influenza-like illness (ILI), defined as 
+        a fever and either cough or sore throat, without a known cause other than influenza. The number of patients
+        with ILI is divided by the total number of patients to create a percentage of outpatient visits due to ILI.
+        The raw percentages are reported for individual states, while for Health and Human Services Regions or 
+        national estimates the state percentages are weighted by state population before being combined."
+      )
+    )
   ),
   
   tabPanel(
@@ -92,6 +109,7 @@ navbarPage(
   tabPanel(
     "How accurate are the forecasts?",
     tags$div(
+      tags$h2("Forecast Accuracy"),
       tags$p(
         "Forecast accuracy is evaluated in two different ways, which each measure slightly different aspects of 
         the forecast."
@@ -113,7 +131,7 @@ navbarPage(
       )
     ),
     fluidRow(
-      column(4,
+      column(3,
              selectInput("scoreLocation", "Location",
                          choices = list(`All locations` = "", 
                                         `USA` = "US National",
@@ -125,13 +143,13 @@ navbarPage(
                                         `States` = c(state.name[state.name != "Florida"])),
                          multiple = TRUE)
              ),
-      column(4,
+      column(3,
              selectInput("scoreSeason", label = "Season",
                          choices = c("All seasons" = "", "2014-2015", "2015-2016", "2016-2017",
                                      "2017-2018", "2018-2019"),
                          multiple = TRUE)
              ),
-      column(4,
+      column(3,
              selectInput("scoreModel", label = "Model",
                          choices = c("All models" = "", "Ensemble" = "Ensemble",
                                      "Harmonic Regression" = "Dynamic Harmonic Model",
@@ -139,16 +157,8 @@ navbarPage(
                                        "Subtype Historical Average",
                                      "Unweighted Historical Average" = "Historical Average"),
                          multiple = TRUE)
-             )
-      ),
-    fluidRow(
-      column(4,
-             selectInput("scoreType", label = "Scoring Metric",
-                         choices = c("Mean Absolute Error" = "mae",
-                                     "Geometric Mean Probability" = "log"),
-                         selected = "mae")
-      ),
-      column(4,
+             ),
+      column(3,
              checkboxInput("groupTarget", label = "Separate Scores by Target",
                            value = TRUE)
       )

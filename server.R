@@ -284,14 +284,12 @@ server <- function(input, output, session) {
   scores <- reactive({
     filter(all_scores, is.null(input$scoreLocation) | location %in% input$scoreLocation,
            is.null(input$scoreSeason) | season %in% input$scoreSeason, 
-           is.null(input$scoreModel) | model %in% input$scoreModel,
-           score_type == input$scoreType) %>%
+           is.null(input$scoreModel) | model %in% input$scoreModel) %>%
       rename(Location = location, Season = season, Model = model, Target = target) %>%
       when(input$groupTarget ~ group_by(., Location, Season, Model, Target),
            TRUE ~ group_by(., Location, Season, Model)) %>%
-      summarize(Score = mean(score)) %>%
-      mutate(Score = case_when(input$scoreType == "log" ~ round(exp(Score), 2),
-                                      TRUE ~ round(Score, 2)))
+      summarize(MAE = round(mean(mae_score), 2),
+                `Geom. Mean Prob.` = round(exp(mean(log_score)), 2)) 
   })
   
   output$scoreTable <- renderDataTable({
