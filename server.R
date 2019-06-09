@@ -16,11 +16,11 @@ server <- function(input, output, session) {
   
   # Show modal that forecasting has concluded for the year
   forecasting_pause <- modalDialog(
-    "Influenza forecasting has concluded for the 2018/2019 influenza season. 
-     You can continue to see forecasts for prior weeks in this and earlier seasons, as well explore
-     accuracy measures for the forecasts. Check back in late October 2019 for the first forecasts
-     for the 2019/2020 season!",
-    title = "Forecasting Concluded for 2018/2019",
+    "Influenza forecasting has concluded for the 2018-2019 influenza season. 
+     You can continue to see forecasts for prior weeks in this season and earlier seasons, as well as 
+     explore accuracy measures for forecasts. Check back in late October 2019 for the first forecasts
+     for the 2019-2020 season!",
+    title = "Forecasting Concluded for 2018-2019",
     easyClose = TRUE
   )
   

@@ -103,7 +103,32 @@ navbarPage(
   
   tabPanel(
     "How are these forecasts made?",
-    "This page is currently under construction - check back later!"
+    tags$div(
+      tags$h2("Forecast Construction"),
+      tags$p(
+        "Weekly forecasts are created separately for each location (US, each HHS Region, each state) based on prior 
+        weeks' levels of influenza-like illness (ILI), current cumulative percentages of infections due to each 
+        of H1N1 and H3N2 influenza viruses, and Google Trends data based on searches for 'flu'. Four related models
+        are fit for each location - a weighted ensemble model, a dynamic harmonic regression model, a 
+        static historical average model, and a historical average model weighted by influenza virus type prevalence."
+      ),
+      tags$h4("Ensemble Model"),
+      tags$p(
+        "The ensemble model is a combination of the forecasts from the three other models. Ensembles have
+        a ", 
+        tags$a(
+          href = "https://www.analyticsvidhya.com/blog/2015/08/introduction-ensemble-learning/", "strong track record"
+        ), 
+        "of performance in machine learning and forecasting. The idea is to combine predictions from several less
+        powerful models to improve the final predictions. Protea's ensemble model combines predictions from the 
+        other three models using a weighted average. Models are assigned different weights depending on the location,
+        target, and time of year, with the values of the weights determined using predictions from training seasons."
+      ),
+      tags$h4("Dynamic Harmonic Model"),
+      tags$p(
+        ""
+      )
+    )
   ),
 
   tabPanel(
@@ -120,11 +145,11 @@ navbarPage(
                 from the observed values. An MAE of 0.2 means that those forecasts differ from the observed value
                 by 0.2%, on average. A ", tags$b("lower"), " MAE is a better score."), 
         tags$li(tags$b("Geometric Mean Probability"), " - This score is the geometric mean probability assigned 
-                to the observed value. It is related to the log score, which is calculated by taking the natural
-                logarithm of the probability the model assigns to the correct outcome. The average of these log 
-                is exponentiated, with the final result representing the geometric mean of the probability
-                assigned to the observed outcome. A ", tags$b('higher'), " geometric mean probability is a better 
-                score.")
+                by the model to the true, observed value. It is related to the log score, which is calculated by 
+                taking the natural logarithm of the probability the model assigns to the correct outcome. The 
+                average of these log is exponentiated, with the final result representing the geometric mean of 
+                the probability assigned to the observed outcome. A ", tags$b('higher'), " geometric mean 
+                probability is a better score.")
       ),
       tags$p(
         "Use the drop down menus below to explore how forecast accuracy varies by location, season, and model type."
@@ -174,6 +199,11 @@ navbarPage(
   
   tabPanel(
     "Contact",
-    "This page is currently under construction - check back later!"
+    tags$div(
+      tags$p(
+        "If you have any additionals questions or comments, please feel free to reach out to ",
+        tags$a(href = "mailto:craig.mcgowan@proteaanalytics.com", "craig.mcgowan@proteaanalytics.com")
+      )
+    )
   )
 )

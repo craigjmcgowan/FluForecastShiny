@@ -21,7 +21,9 @@ rolling_ili <- readRDS("Data/rolling_ili.Rds")
 final_ili <- readRDS("Data/final_ili.Rds")
 
 # Current MMWR week
-this_week <- tail(final_ili$week, 1)
+this_week <- filter(final_ili, season == max(season), order_week == min(tail(order_week, 1), 70)) %>%
+  pull(week) %>%
+  tail(1)
 
 # Mappings between states/regions/national
 state_region <- tibble(
