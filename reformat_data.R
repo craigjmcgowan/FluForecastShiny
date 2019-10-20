@@ -12,6 +12,7 @@ forecasts_1516 <- read_forecasts("RawData/2015-2016/NatReg")
 forecasts_1617 <- read_forecasts("RawData/2016-2017/NatReg")
 forecasts_1718 <- read_forecasts("RawData/2017-2018/NatReg")
 forecasts_1819 <- read_forecasts("RawData/2018-2019/NatReg")
+forecasts_1920 <- read_forecasts("RawData/2019-2020/NatReg")
 
 state_forecasts_1415 <- read_forecasts("RawData/2014-2015/States", challenge = 'state_ili')
 state_forecasts_1516 <- read_forecasts("RawData/2015-2016/States", challenge = 'state_ili')
@@ -30,14 +31,14 @@ nat_reg_forecasts <- bind_rows(
   bind_rows(modify_depth(forecasts_1718, 1, bind_rows), .id = 'model') %>%
     mutate(season = "2017-2018"),
   bind_rows(modify_depth(forecasts_1819, 1, bind_rows), .id = 'model') %>%
-    mutate(season = "2018-2019")
+    mutate(season = "2018-2019"),
+  bind_rows(modify_depth(forecasts_1920, 1, bind_rows), .id = 'model') %>%
+    mutate(season = "2019-2020")
 ) %>%
   mutate(order_week = week_inorder(forecast_week, season)) %>%
   select(-bin_end_notincl, -unit) %>%
   filter(str_detect(target, "wk ahead")) %>%
-  mutate(model = case_when(model == "ens-month-target-type-based-weights" ~ "Ensemble",
-                           TRUE ~ model),
-         model = factor(model))
+  mutate(model = factor(model))
 
 state_forecasts <- bind_rows(
   bind_rows(modify_depth(state_forecasts_1415, 1, bind_rows), .id = 'model') %>%
@@ -94,42 +95,42 @@ saveRDS(all_forecasts, file = "Data/all_forecasts.Rds")
 
 
 # Observed flu data
-load('../FluForecast/Data/ili.Rdata')
-load('../FluForecast/Data/ili_state.Rdata')
+ili_current <- readRDS('../FluForecast/Data/ili_current.Rds')
+ili_init_pub_list <- readRDS('../FluForecast/Data/ili_init_pub_list.Rds')
 
 
 # Collapse observed ILI into single data file
 rolling_observed <- bind_rows(ili_init_pub_list) %>%
   mutate(season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9))) %>%
-  filter(season %in% c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019"),
+  filter(season %in% c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019", "2019-2020"),
          week %in% c(1:18, 40:53)) %>%
   select(season, location, week, year, release_date, epiweek, issue, lag, ILI) %>%
   mutate(order_week = week_inorder(week, season),
          issue_week = as.numeric(substr(issue, 5, 6)),
          release_date = as.Date(release_date)) %>%
-  bind_rows(bind_rows(state_ili_init_pub_list) %>%
-    unique() %>%
-    mutate(season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9)),
-           pub_season = case_when(as.numeric(substr(issue, 5, 6)) >= 40 ~ 
-                                    paste0(substr(issue, 1, 4), "-", as.numeric(substr(issue, 1, 4)) + 1),
-                                  TRUE ~ paste0(as.numeric(substr(issue, 1, 4)) - 1, "-", substr(issue, 1, 4)))) %>%
-    filter(season %in% c("2014-2015", "2015-2016", "2016-2017") |
-             season == pub_season, week %in% c(1:18, 40:53)) %>%
-    select(season, location, week, year, release_date, epiweek, issue, lag, ILI) %>%
-    mutate(order_week = week_inorder(week, season),
-           issue_week = as.numeric(substr(issue, 5, 6)))
-  ) %>%
+  # bind_rows(bind_rows(state_ili_init_pub_list) %>%
+  #   unique() %>%
+  #   mutate(season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9)),
+  #          pub_season = case_when(as.numeric(substr(issue, 5, 6)) >= 40 ~ 
+  #                                   paste0(substr(issue, 1, 4), "-", as.numeric(substr(issue, 1, 4)) + 1),
+  #                                 TRUE ~ paste0(as.numeric(substr(issue, 1, 4)) - 1, "-", substr(issue, 1, 4)))) %>%
+  #   filter(season %in% c("2014-2015", "2015-2016", "2016-2017") |
+  #            season == pub_season, week %in% c(1:18, 40:53)) %>%
+  #   select(season, location, week, year, release_date, epiweek, issue, lag, ILI) %>%
+  #   mutate(order_week = week_inorder(week, season),
+  #          issue_week = as.numeric(substr(issue, 5, 6)))
+  # ) %>%
   arrange(season, location, order_week, issue_week)
 
 # Final truth
 final_observed <- mutate(ili_current, season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9))) %>%
   filter(year > 2014 | season == "2014-2015") %>%
   select(season, location, week, ILI) %>%
-  bind_rows(
-    mutate(state_current, season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9))) %>%
-      filter(year > 2014 | season == "2014-2015") %>%
-      select(season, location, week, ILI)
-  ) %>%
+  # bind_rows(
+  #   mutate(state_current, season = paste0(substr(season, 1, 4), "-", substr(season, 6, 9))) %>%
+  #     filter(year > 2014 | season == "2014-2015") %>%
+  #     select(season, location, week, ILI)
+  # ) %>%
   mutate(order_week = week_inorder(week, season))
 
 # Save RDS output for use in Shiny
@@ -142,44 +143,38 @@ nat_reg_truth <- final_observed %>%
   filter(!location %in% state.name) %>%
   select(-order_week) %>%
   mutate(year = as.numeric(substr(season, 1, 4))) %>%
-  nest(-season, -year) %>%
+  nest(data = c(location, week, ILI)) %>%
   mutate(truth = map2(data, year,
                       ~ create_truth(fluview = FALSE, year = .y, weekILI = .x,
-                                     challenge = 'ilinet')),
-         weeks_53 = (year == 2014),
-         exp_truth = map2(truth, weeks_53,
-                          ~ expand_truth(.x, week53 = weeks_53))) %>%
-  select(-data, -weeks_53) 
+                                     challenge = 'ilinet'))) %>%
+  select(-data) 
 
 state_truth <- final_observed %>%
   filter(location %in% state.name) %>%
   select(-order_week) %>%
   mutate(year = as.numeric(substr(season, 1, 4))) %>%
-  nest(-season, -year) %>%
+  nest(data = c(location, week, ILI)) %>%
   mutate(truth = map2(data, year,
                       ~ create_truth(fluview = FALSE, year = .y, weekILI = .x,
-                                     challenge = 'state_ili')),
-         weeks_53 = (year == 2014),
-         exp_truth = map2(truth, weeks_53,
-                          ~ expand_truth(.x, week53 = weeks_53))) %>%
-  select(-data, -weeks_53) 
+                                     challenge = 'state_ili'))) %>%
+  select(-data) 
 
 nat_reg_scores <- full_join(
   # Log scores
-  nat_reg_forecasts %>%
-    nest(-season, -model, -order_week) %>%
-    left_join(select(nat_reg_truth, season, exp_truth),
+  temp <- nat_reg_forecasts %>%
+    nest(data = c(location, target, type, bin_start_incl, value, forecast_week)) %>%
+    left_join(select(nat_reg_truth, season, truth),
               by = "season") %>%
-    mutate(score = map2(data, exp_truth,
+    mutate(score = map2(data, truth,
                         ~ score_entry(.x, .y))) %>%
-    select(-data, -exp_truth) %>%
-    unnest() %>%
+    select(-data, -truth) %>%
+    unnest(cols = c(score)) %>%
     rename(log_score = score) %>%
     filter(str_detect(target, "ahead")),
   # MAE score
   nat_reg_truth %>%
     select(season, truth) %>%
-    unnest() %>%
+    unnest(cols = c(truth)) %>%
     filter(str_detect(target, "ahead")) %>%
     left_join(point_forecasts,
               by = c("location", "season", "target", "forecast_week")) %>%
@@ -191,19 +186,19 @@ nat_reg_scores <- full_join(
 state_scores <- full_join(
   # Log scores
   state_forecasts %>%
-    nest(-season, -model, -order_week) %>%
-    left_join(select(state_truth, season, exp_truth),
+    nest(data = c(location, target, type, bin_start_incl, value, forecast_week)) %>%
+    left_join(select(state_truth, season, truth),
               by = "season") %>%
-    mutate(score = map2(data, exp_truth,
+    mutate(score = map2(data, truth,
                         ~ score_entry(.x, .y))) %>%
-    select(-data, -exp_truth) %>%
-    unnest() %>%
+    select(-data, -truth) %>%
+    unnest(cols = c(score)) %>%
     rename(log_score = score) %>%
     filter(str_detect(target, "ahead")),
   # MAE score
   state_truth %>%
     select(season, truth) %>%
-    unnest() %>%
+    unnest(cols = c(truth)) %>%
     filter(str_detect(target, "ahead")) %>%
     inner_join(point_forecasts,
               by = c("location", "season", "target", "forecast_week")) %>%

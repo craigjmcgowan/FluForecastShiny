@@ -15,16 +15,16 @@ library(sf)
 server <- function(input, output, session) {
   
   # Show modal that forecasting has concluded for the year
-  forecasting_pause <- modalDialog(
-    "Influenza forecasting has concluded for the 2018-2019 influenza season. 
-     You can continue to see forecasts for prior weeks in this season and earlier seasons, as well as 
-     explore accuracy measures for forecasts. Check back in late October 2019 for the first forecasts
-     for the 2019-2020 season!",
-    title = "Forecasting Concluded for 2018-2019",
-    easyClose = TRUE
-  )
-  
-  showModal(forecasting_pause)
+  # forecasting_pause <- modalDialog(
+  #   "Influenza forecasting has concluded for the 2018-2019 influenza season. 
+  #    You can continue to see forecasts for prior weeks in this season and earlier seasons, as well as 
+  #    explore accuracy measures for forecasts. Check back in late October 2019 for the first forecasts
+  #    for the 2019-2020 season!",
+  #   title = "Forecasting Concluded for 2018-2019",
+  #   easyClose = TRUE
+  # )
+  # 
+  # showModal(forecasting_pause)
   
   ### Update user inputs -----
   
@@ -183,6 +183,8 @@ server <- function(input, output, session) {
     
   })
   
+  ##### Create plot of predictions over time #####
+  
   output$time_plot <- renderPlot({
     
     ggplot(point_forecasts()) +
@@ -289,10 +291,10 @@ server <- function(input, output, session) {
       when(input$groupTarget ~ group_by(., Location, Season, Model, Target),
            TRUE ~ group_by(., Location, Season, Model)) %>%
       summarize(MAE = round(mean(mae_score), 2),
-                `Geom. Mean Prob.` = round(exp(mean(log_score)), 2)) 
+                `Geom. Mean Prob.` = round(exp(mean(log_score)), 2))
   })
   
-  output$scoreTable <- renderDataTable({
+  output$scoreTable <- DT::renderDataTable({
     scores()
   })
   

@@ -46,8 +46,8 @@ navbarPage(
                                             "HHS Region 9", "HHS Region 10", state.name)),
                     selectInput("season", label = "Season",
                                 choices = c("2014-2015", "2015-2016", "2016-2017",
-                                            "2017-2018", "2018-2019"),
-                                selected = "2018-2019"),
+                                            "2017-2018", "2018-2019", "2019-2020"),
+                                selected = "2019-2020"),
                     selectInput("model", label = "Model",
                                 choices = c("Ensemble",
                                             "Harmonic Regression" = "Dynamic Harmonic Model",
@@ -171,7 +171,7 @@ navbarPage(
       column(3,
              selectInput("scoreSeason", label = "Season",
                          choices = c("All seasons" = "", "2014-2015", "2015-2016", "2016-2017",
-                                     "2017-2018", "2018-2019"),
+                                     "2017-2018", "2018-2019", "2019-2020"),
                          multiple = TRUE)
              ),
       column(3,
@@ -189,7 +189,7 @@ navbarPage(
       )
     ),
     hr(),
-    dataTableOutput("scoreTable")
+    DT::dataTableOutput("scoreTable")
   ),
   
   tabPanel(
