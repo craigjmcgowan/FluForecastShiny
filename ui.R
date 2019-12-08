@@ -11,6 +11,8 @@ library(FluSight)
 library(MMWRweek)
 library(sf)
 
+options(shiny.sanitize.errors = FALSE)
+
 ##### UI #####
 navbarPage(
   "Protea Analytics", id = "nav",

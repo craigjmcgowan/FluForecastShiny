@@ -12,6 +12,7 @@ library(MMWRweek)
 library(sf)
 
 source("utils.R")
+options(shiny.sanitize.errors = FALSE)
 
 # Load in forecast data
 all_forecasts <- readRDS("Data/all_forecasts.Rds")

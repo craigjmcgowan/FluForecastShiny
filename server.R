@@ -11,6 +11,8 @@ library(FluSight)
 library(MMWRweek)
 library(sf)
 
+options(shiny.sanitize.errors = FALSE)
+
 ##### SERVER #####
 server <- function(input, output, session) {
   
