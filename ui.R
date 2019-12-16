@@ -149,7 +149,7 @@ navbarPage(
         tags$li(tags$b("Geometric Mean Probability"), " - This score is the geometric mean probability assigned 
                 by the model to the true, observed value. It is related to the log score, which is calculated by 
                 taking the natural logarithm of the probability the model assigns to the correct outcome. The 
-                average of these log is exponentiated, with the final result representing the geometric mean of 
+                average of these log scores is exponentiated, with the final result representing the geometric mean of 
                 the probability assigned to the observed outcome. A ", tags$b('higher'), " geometric mean 
                 probability is a better score.")
       ),
@@ -203,7 +203,7 @@ navbarPage(
     "Contact",
     tags$div(
       tags$p(
-        "If you have any additionals questions or comments, please feel free to reach out to ",
+        "If you have any additional questions or comments, please feel free to reach out to ",
         tags$a(href = "mailto:craig.mcgowan@proteaanalytics.com", "craig.mcgowan@proteaanalytics.com")
       )
     )
